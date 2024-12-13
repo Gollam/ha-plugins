@@ -48,7 +48,7 @@ case "$1" in
         docker run \
             --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock:ro \
             homeassistant/amd64-builder:dev \
-            --no-cache --aarch64 --amd64 \
+            --no-cache --aarch64 \
             -t ha-sip -r $NEXT_REPO_URL -b next \
             --docker-user agellhaus --docker-password "$DOCKER_HUB_PASSWORD"
         ;;
@@ -82,10 +82,10 @@ case "$1" in
         rm -rf "$SCRIPT_DIR"/venv "$SCRIPT_DIR"/deps
         python3 -m venv "$SCRIPT_DIR"/venv
         source "$SCRIPT_DIR"/venv/bin/activate
-        pip3 install pydub requests PyYAML typing_extensions pyright python-dotenv paho-mqtt
+        pip3 install pydub requests PyYAML typing_extensions pyright python-dotenv paho-mqtt setuptools
         mkdir "$SCRIPT_DIR"/deps
         cd "$SCRIPT_DIR"/deps || exit
-        git clone --depth 1 --branch 2.14.1 https://github.com/pjsip/pjproject.git
+        git clone --depth 1 --branch 2.15 https://github.com/pjsip/pjproject.git
         cd pjproject || exit
         ./configure --enable-shared --disable-libwebrtc --prefix "$SCRIPT_DIR"/venv
         make

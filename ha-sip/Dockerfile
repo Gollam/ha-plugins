@@ -6,9 +6,9 @@ RUN apk update
 RUN apk upgrade
 RUN apk add build-base openssl-dev alsa-lib-dev gsm-dev opus-dev speex-dev speexdsp-dev portaudio-dev libsrtp-dev libsamplerate-dev linux-headers python3-dev swig ffmpeg git
 
-RUN pip3 install pydub requests PyYAML typing_extensions python-dotenv paho-mqtt
+RUN pip3 install pydub requests PyYAML typing_extensions python-dotenv paho-mqtt setuptools
 
-RUN git clone --depth 1 --branch 2.14.1 https://github.com/pjsip/pjproject.git /tmp/pjproject
+RUN git clone --depth 1 --branch 2.15 https://github.com/pjsip/pjproject.git /tmp/pjproject
 
 COPY user.mak /tmp/pjproject
 
