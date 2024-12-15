@@ -14,8 +14,8 @@ fi
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
 case "$1" in
-    build-next)
-        echo "Building on next repo (aarch64 only)..."
+    update-next-repo)
+        echo "Updating next repo..."
         rm -rf $TMP_URL
         git clone -b next $REPO_URL $TMP_URL
         # Change repo
@@ -45,6 +45,9 @@ case "$1" in
         git commit -a -m "Changes for next repository."
         git remote set-url origin $NEXT_REPO_SSH
         git push --force
+        ;;
+    build-next)
+        echo "Building next repo (aarch64 only)..."
         docker run \
             --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock:ro \
             homeassistant/amd64-builder:dev \
@@ -52,12 +55,21 @@ case "$1" in
             -t ha-sip -r $NEXT_REPO_URL -b next \
             --docker-user agellhaus --docker-password "$DOCKER_HUB_PASSWORD"
         ;;
-    build)
+    build-amd64)
         echo "Building prod (all archs)..."
         docker run \
             --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock:ro \
             homeassistant/amd64-builder:dev \
-            --no-cache --all \
+            --no-cache --amd64 --i386 \
+            -t ha-sip -r $REPO_URL -b next \
+            --docker-user agellhaus --docker-password "$DOCKER_HUB_PASSWORD"
+        ;;
+    build-arm)
+        echo "Building prod (all archs)..."
+        docker run \
+            --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock:ro \
+            homeassistant/amd64-builder:dev \
+            --no-cache --aarch64 --armv7 --armhf \
             -t ha-sip -r $REPO_URL -b next \
             --docker-user agellhaus --docker-password "$DOCKER_HUB_PASSWORD"
         ;;
@@ -97,7 +109,7 @@ case "$1" in
         python setup.py install
         ;;
     *)
-        echo "Supply one of 'build-next', 'build', 'test', 'update', 'run-local' or 'create-venv'"
+        echo "Supply one of 'update-next-repo', 'build-next', 'build-amd64', 'build-arm', 'test', 'update', 'run-local' or 'create-venv'"
         exit 1
         ;;
 esac
