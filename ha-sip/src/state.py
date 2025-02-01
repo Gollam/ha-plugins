@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from call_state_change import CallStateChange
-from log import log
+import logging
 
 if TYPE_CHECKING:
     import call
@@ -14,10 +14,10 @@ class State(object):
 
     def on_state_change(self, state: CallStateChange, caller_id: str, new_call: call.Call) -> None:
         if state == CallStateChange.HANGUP:
-            log(None, 'Remove from state: %s' % caller_id)
+            logging.info('Remove from state: %s', caller_id)
             del self.current_call_dict[caller_id]
         elif state == CallStateChange.CALL:
-            log(None, 'Add to state: %s' % caller_id)
+            logging.info('Add to state: %s', caller_id)
             self.current_call_dict[caller_id] = new_call
 
     def is_active(self, caller_id: str) -> bool:
@@ -25,11 +25,11 @@ class State(object):
 
     def output(self) -> None:
         if self.current_call_dict:
-            log(None, 'Currently registered calls:')
+            logging.info('Currently registered calls:')
             for number in self.current_call_dict.keys():
-                log(None, '    %s' % number)
+                logging.info('    %s', number)
         else:
-            log(None, 'No active calls.')
+            logging.info('No active calls.')
 
     def get_call(self, caller_id: str) -> Optional[call.Call]:
         return self.current_call_dict.get(caller_id)

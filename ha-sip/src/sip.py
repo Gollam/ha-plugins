@@ -1,6 +1,6 @@
 import pjsua2 as pj
 
-from log import log
+import logging
 
 
 class MyEndpointConfig(object):
@@ -24,7 +24,7 @@ def create_endpoint(config: MyEndpointConfig) -> pj.Endpoint:
     end_point.libCreate()
     end_point.libInit(ep_cfg)
     codecs = end_point.codecEnum2()
-    log(None, "Supported audio codecs: %s" % ", ".join(c.codecId for c in codecs))
+    logging.info("Supported audio codecs: %s", ", ".join(c.codecId for c in codecs))
     end_point.audDevManager().setNullDev()
     sip_tp_config = pj.TransportConfig()
     sip_tp_config.port = config.port

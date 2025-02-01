@@ -5,12 +5,6 @@ export REPO_URL=https://github.com/arnonym/ha-plugins
 export NEXT_REPO_URL=https://github.com/arnonym/ha-plugins-next
 export NEXT_REPO_SSH=git@github.com:arnonym/ha-plugins-next.git
 
-if [ -z "$DOCKER_HUB_PASSWORD" ]
-  then
-    echo "\$DOCKER_HUB_PASSWORD must be set"
-    exit 1
-fi
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
 case "$1" in
@@ -58,8 +52,7 @@ case "$1" in
             --rm --privileged -v /var/run/docker.sock:/var/run/docker.sock:ro \
             homeassistant/amd64-builder:dev \
             --no-cache --all \
-            -t ha-sip -r $REPO_URL -b next \
-            --docker-user agellhaus --docker-password "$DOCKER_HUB_PASSWORD"
+            -t ha-sip 
         ;;
     update)
         echo "Updating builder..."

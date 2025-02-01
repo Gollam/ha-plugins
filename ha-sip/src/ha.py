@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import os
 from typing import Union, Optional, Dict, Any
+import logging
 
 import requests
 from typing_extensions import TypedDict, Literal
 
 import constants
 import audio
-from log import log
 
 
 class IncomingCallEvent(TypedDict):
@@ -144,23 +144,23 @@ def create_and_get_tts(ha_config: HaConfig, message: str, language: str) -> tupl
     headers = ha_config.create_headers()
     create_response = requests.post(ha_config.get_tts_url(), json={'platform': ha_config.tts_engine, 'message': message, 'language': language}, headers=headers)
     if create_response.status_code != 200:
-        log(None, 'Error getting tts file %r %r' % (create_response.status_code, create_response.content))
+        logging.error('Error getting tts file %r %r', create_response.status_code, create_response.content)
         error_file_name = os.path.join(constants.ROOT_PATH, 'sound/answer.wav')
         return error_file_name, False
     response_deserialized = create_response.json()
     tts_url = response_deserialized['url']
-    log(None, 'Getting audio from "%s"' % tts_url)
+    logging.info('Getting audio from "%s"', tts_url)
     try:
         tts_response = requests.get(tts_url, headers=headers)
     except Exception as e:
-        log(None, 'Error getting tts audio: %s' % e)
+        logging.error('Error getting tts audio: %s', e)
         return error_file_name, False
     if tts_url.endswith('.mp3'):
         wav_file_name = audio.convert_mp3_stream_to_wav_file(tts_response.content)
     else:
         wav_file_name = audio.write_wav_stream_to_wav_file(tts_response.content)
     if not wav_file_name:
-        log(None, 'Error converting to wav: %s' % wav_file_name)
+        logging.error('Error converting to wav: %s', wav_file_name)
         return error_file_name, False
     return wav_file_name, True
 
@@ -171,15 +171,15 @@ def call_service(ha_config: HaConfig, domain: str, service: str, entity_id: str,
     if service_data:
         payload.update(service_data)
     service_response = requests.post(ha_config.get_service_url(domain, service), json=payload, headers=headers)
-    log(None, 'Service response %r %r' % (service_response.status_code, service_response.content))
+    logging.info('Service response %r %r', service_response.status_code, service_response.content)
 
 
 def trigger_webhook(ha_config: HaConfig, event: WebhookEvent, overwrite_webhook_id: Optional[str] = None) -> None:
     webhook_id = overwrite_webhook_id or ha_config.webhook_id
     if not webhook_id:
-        log(None, 'Warning: No webhook defined.')
+        logging.warning('No webhook defined.')
         return
-    log(None, 'Calling webhook %s with data %s' % (webhook_id, event))
+    logging.info('Calling webhook %s with data %s', webhook_id, event)
     headers = ha_config.create_headers()
     service_response = requests.post(ha_config.get_webhook_url(webhook_id), json=event, headers=headers)
-    log(None, 'Webhook response %r %r' % (service_response.status_code, service_response.content))
+    logging.info('Webhook response %r %r', service_response.status_code, service_response.content)

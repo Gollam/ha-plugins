@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from typing import Optional
+import logging
 
 import pjsua2 as pj
 
@@ -10,9 +11,8 @@ import ha
 import incoming_call
 import utils
 from constants import DEFAULT_RING_TIMEOUT
-from log import log
 from command_handler import CommandHandler
-
+from mqtt import MqttClient
 
 class MyAccountConfig(object):
     def __init__(
@@ -42,13 +42,14 @@ class MyAccountConfig(object):
 
 
 class Account(pj.Account):
-    def __init__(self, end_point: pj.Endpoint, config: MyAccountConfig, command_handler: CommandHandler, ha_config: ha.HaConfig, make_default=False):
+    def __init__(self, end_point: pj.Endpoint, config: MyAccountConfig, command_handler: CommandHandler, ha_config: ha.HaConfig, mqtt_client: MqttClient, make_default=False):
         pj.Account.__init__(self)
         self.config = config
         self.end_point = end_point
         self.command_handler = command_handler
         self.ha_config = ha_config
         self.make_default = make_default
+        self.mqtt_client = mqtt_client
 
     def init(self) -> None:
         account_config = pj.AccountConfig()
@@ -60,11 +61,11 @@ class Account(pj.Account):
         return pj.Account.create(self, account_config, self.make_default)
 
     def onRegState(self, prm) -> None:
-        log(self.config.index, 'OnRegState: %s %s' % (prm.code, prm.reason))
+        logging.info('OnRegState: %s %s, account: %s', prm.code, prm.reason, self.config.index)
 
     def onIncomingCall(self, prm) -> None:
         if not self.config:
-            log(None, 'Error: No config set when onIncomingCall was called.')
+            logging.error('No config set when onIncomingCall was called.')
             return
         menu = self.config.incoming_call_config.get('menu') if self.config.incoming_call_config else None
         allowed_numbers = self.config.incoming_call_config.get('allowed_numbers') if self.config.incoming_call_config else None
@@ -76,19 +77,21 @@ class Account(pj.Account):
         )
         ci = incoming_call_instance.get_call_info()
         answer_mode = self.get_sip_return_code(self.config.mode, allowed_numbers, blocked_numbers, ci['parsed_caller'])
-        log(self.config.index, 'Incoming call  from  \'%s\' to \'%s\' (parsed: \'%s\')' % (ci['remote_uri'], ci['local_uri'], ci['parsed_caller']))
+        logging.info('Incoming call  from  \'%s\' to \'%s\' (parsed: \'%s\'), account: %s', ci['remote_uri'], ci['local_uri'], ci['parsed_caller'], self.config.index)
         if allowed_numbers:
-            log(self.config.index, 'Allowed numbers: %s' % allowed_numbers)
+            logging.info('Allowed numbers: %s, account: %s', allowed_numbers, self.config.index)
         if blocked_numbers:
-            log(self.config.index, 'Blocked numbers: %s' % blocked_numbers)
-        log(self.config.index, 'Answer mode: %s' % answer_mode.name)
+            logging.info('Blocked numbers: %s, account: %s', blocked_numbers, self.config.index)
+        logging.info('Answer mode: %s, account: %s', answer_mode.name, self.config.index)
         incoming_call_instance.accept(answer_mode, answer_after)
-        ha.trigger_webhook(self.ha_config, {
-            'event': 'incoming_call',
-            'caller': ci['remote_uri'],
-            'parsed_caller': ci['parsed_caller'],
-            'sip_account': self.config.index,
-        })
+        #ha.trigger_webhook(self.ha_config, {
+        #    'event': 'incoming_call',
+        #    'caller': ci['remote_uri'],
+        #    'parsed_caller': ci['parsed_caller'],
+        #    'sip_account': self.config.index,
+        #})
+
+        self.command_handler.call_state_sensor.set_state("ringing")
 
     def get_sip_return_code(
         self,
@@ -98,7 +101,7 @@ class Account(pj.Account):
         parsed_caller: Optional[str],
     ) -> call.CallHandling:
         if allowed_numbers and blocked_numbers:
-            log(self.config.index, 'Error: cannot specify both of allowed and blocked numbers. Call won\'t be accepted!')
+            logging.error('Cannot specify both of allowed and blocked numbers. Call won\'t be accepted! account: %s', self.config.index)
             return call.CallHandling.LISTEN
         if mode == call.CallHandling.ACCEPT and allowed_numbers:
             return call.CallHandling.ACCEPT if Account.is_number_in_list(parsed_caller, allowed_numbers) else call.CallHandling.LISTEN
@@ -126,7 +129,7 @@ class Account(pj.Account):
         return False
 
 
-def create_account(end_point: pj.Endpoint, config: MyAccountConfig, command_handler: CommandHandler, ha_config: ha.HaConfig, is_default: bool) -> Account:
-    account = Account(end_point, config, command_handler, ha_config, is_default)
+def create_account(end_point: pj.Endpoint, config: MyAccountConfig, command_handler: CommandHandler, ha_config: ha.HaConfig, mqtt_client: MqttClient, is_default: bool) -> Account:
+    account = Account(end_point, config, command_handler, ha_config, mqtt_client, is_default)
     account.init()
     return account
